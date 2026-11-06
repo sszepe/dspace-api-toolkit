@@ -151,7 +151,7 @@ class VocabularyManager(BaseManager):
                                    max_results=max_results)
 
     def get_entries(self, name: str, filter: Optional[str] = None, exact: bool = False,
-                    max_results: Optional[int] = None) -> List[Dict[str, Any]]:
+                    entry_id: Optional[str] = None, max_results: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Get vocabulary entries as a list.
 
