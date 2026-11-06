@@ -1,0 +1,74 @@
+# Integration test targets for the compatibility matrix.
+#
+# Each target runs the *upstream* docker-compose.yml of that DSpace / DSpace-CRIS
+# branch (so start commands, Postgres image and Solr cores always match the
+# version) plus a generated override (see run_matrix.py) that:
+#   - drops build sections, fixed container names and the ./dspace/config source mount
+#   - publishes the REST API on `port` and sets dspace.server.url to match
+#   - waits for Postgres to be healthy before the backend starts
+#   - gives every target its own network subnet, so targets can run in parallel
+#
+# Images: by default the upstream defaults are used (the latest build of the
+# branch, usually the "-test" backend image). To pin a release, set
+#   env: {DSPACE_VER: <tag>}
+# NOTE: upstream uses DSPACE_VER for backend, Solr (and pgcrypto Postgres) images
+# alike, so the tag must exist for all of them on Docker Hub.
+#
+# setup: DSpace CLI commands run in the backend after the admin is created
+# (best effort). Plain DSpace has no relationship types until the
+# configurable-entities model is loaded; DSpace-CRIS does not use them.
+
+defaults:
+  admin_email: admin@example.org
+  admin_password: "Toolkit-IT-2026!"
+  startup_timeout: 1200        # seconds; first start runs all DB migrations
+  memory_hint: "~4 GB per running target"
+
+targets:
+  - name: dspace-8
+    label: DSpace 8.x
+    family: dspace
+    base_version: "8"
+    compose_url: https://raw.githubusercontent.com/DSpace/DSpace/dspace-8_x/docker-compose.yml
+    setup: &entities
+      - initialize-entities -f /dspace/config/entities/relationship-types.xml
+    port: 18080
+
+  - name: dspace-9
+    label: DSpace 9.x
+    family: dspace
+    base_version: "9"
+    compose_url: https://raw.githubusercontent.com/DSpace/DSpace/dspace-9_x/docker-compose.yml
+    setup: *entities
+    port: 18090
+
+  - name: dspace-10
+    label: DSpace 10.x
+    family: dspace
+    base_version: "10"
+    compose_url: https://raw.githubusercontent.com/DSpace/DSpace/dspace-10_x/docker-compose.yml
+    setup: *entities
+    port: 18100
+
+  - name: cris-2024.02
+    label: DSpace-CRIS 2024.02 (DSpace 8 line)
+    family: cris
+    base_version: "8"
+    compose_url: https://raw.githubusercontent.com/4Science/DSpace/dspace-cris-2024_02_x/docker-compose.yml
+    port: 18180
+
+  - name: cris-2025.02
+    label: DSpace-CRIS 2025.02 (DSpace 9 line)
+    family: cris
+    base_version: "9"
+    compose_url: https://raw.githubusercontent.com/4Science/DSpace/dspace-cris-2025_02_x/docker-compose.yml
+    port: 18190
+
+  # Example of a pinned release (uncomment and adjust; the tag must exist for all images):
+  # - name: cris-2025.02.01.02
+  #   label: DSpace-CRIS 2025.02.01.02
+  #   family: cris
+  #   base_version: "9"
+  #   compose_url: https://raw.githubusercontent.com/4Science/DSpace/dspace-cris-2025_02_x/docker-compose.yml
+  #   port: 18200
+  #   env: {DSPACE_VER: dspace-cris-2025.02.01.02}
