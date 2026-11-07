@@ -1,5 +1,11 @@
 # dspace-api-toolkit
 
+[![CI](https://github.com/sszepe/dspace-api-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/sszepe/dspace-api-toolkit/actions/workflows/ci.yml)
+[![Compatibility matrix](https://github.com/sszepe/dspace-api-toolkit/actions/workflows/integration-matrix.yml/badge.svg)](https://github.com/sszepe/dspace-api-toolkit/actions/workflows/integration-matrix.yml)
+[![PyPI](https://img.shields.io/pypi/v/dspace-api-toolkit.svg)](https://pypi.org/project/dspace-api-toolkit/)
+[![Python](https://img.shields.io/pypi/pyversions/dspace-api-toolkit.svg)](https://pypi.org/project/dspace-api-toolkit/)
+[![License](https://img.shields.io/pypi/l/dspace-api-toolkit.svg)](LICENSE)
+
 A Python toolkit for the REST API of **DSpace 7+** and **DSpace-CRIS**, built
 for repository administrators and integration scripts: batch imports,
 submissions, files of any size, access control, collection setup, versioning -
@@ -138,6 +144,9 @@ pip install -e ".[dev]"
 pytest                                        # unit tests, 100% coverage gate
 python -m integration.run_matrix -t dspace-9  # regression tests against a Docker stack
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the regression test workflow and
+[integration/README.md](integration/README.md) for the matrix details.
 
 ## Related projects
 
