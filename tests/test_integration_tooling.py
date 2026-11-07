@@ -177,13 +177,13 @@ class TestMatrix:
         assert rows["items.crud"]["dspace-10"]["state"] == "fail"
         assert rows["items.crud"]["dspace-10"]["setup_error"].startswith("REST API")
 
-        md = (tmp_path / "matrix.md").read_text()
+        md = (tmp_path / "matrix.md").read_text(encoding="utf-8")
         assert "| **dspace-9** DSPACE-9 | DSpace 9.1 |" in md
         assert "⚠ REST API not ready" in md
         assert "**cris-2025.02** · `items.crud` · items.crud_0: failed - assert 1 == 2" in md
         assert "`bitstreams.primary`<br><sub>" in md
         assert "## Regressions" not in md
-        html_text = (tmp_path / "matrix.html").read_text()
+        html_text = (tmp_path / "matrix.html").read_text(encoding="utf-8")
         assert "<title>DSpace toolkit compatibility matrix</title>" in html_text
         assert "title='items.crud_0: failed - assert 1 == 2'" in html_text
         assert json.loads((tmp_path / "matrix.json").read_text())["features"] == matrix["features"]
@@ -195,8 +195,8 @@ class TestMatrix:
         write_reports(new_dir, report("dspace-9", [("items.crud", "failed", "boom"), ("items.upsert", "failed", "x")]))
         matrix = bm.write_matrix(str(new_dir), baseline_path=str(old_dir / "matrix.json"))
         assert matrix["regressions"] == [{"feature": "items.crud", "target": "dspace-9"}]   # upsert was failing before
-        assert "🔻" in (new_dir / "matrix.md").read_text()
-        assert "<h2>Regressions</h2>" in (new_dir / "matrix.html").read_text()
+        assert "🔻" in (new_dir / "matrix.md").read_text(encoding="utf-8")
+        assert "<h2>Regressions</h2>" in (new_dir / "matrix.html").read_text(encoding="utf-8")
         assert bm.main(["--reports", str(new_dir), "--baseline", str(old_dir / "matrix.json")]) == 1
         assert bm.main(["--reports", str(old_dir)]) == 0
 
