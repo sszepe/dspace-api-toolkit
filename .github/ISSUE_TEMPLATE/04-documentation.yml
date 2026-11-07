@@ -1,0 +1,32 @@
+name: Documentation improvement
+description: Report unclear, missing, or incorrect documentation
+title: "Docs: "
+labels: [documentation]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Documentation page or file
+      description: Link or path, if known
+      placeholder: e.g. README.md or docs/...
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is unclear, missing, or incorrect?
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: What would help readers?
+      description: Suggest a correction, topic, explanation, or tutorial.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Relevant toolkit / server versions (optional)
+  - type: textarea
+    id: references
+    attributes:
+      label: References or proposed wording (optional)

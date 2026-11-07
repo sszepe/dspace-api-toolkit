@@ -1,0 +1,67 @@
+name: Bug report
+description: Report unexpected behavior or a compatibility problem with DSpace / DSpace-CRIS
+title: "Bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please remove credentials, tokens, personal data, and sensitive server details from examples and logs. Do not test destructive reproductions on production.
+  - type: input
+    id: toolkit
+    attributes:
+      label: Toolkit version
+      description: 'Run: python -c "import dspace_api; print(dspace_api.__version__)"'
+      placeholder: e.g. 1.2.3 or main commit SHA
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: DSpace / DSpace-CRIS version
+      description: e.g. DSpace 9.1 or DSpace-CRIS 2025.02.00 (GET /server/api may show dspaceVersion)
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version and operating system
+      placeholder: e.g. Python 3.12, Ubuntu 24.04
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal sanitized code or numbered steps; include relevant endpoint and HTTP status if known
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Include the full sanitized error, relevant response excerpt, or DEBUG log if possible
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this happen?
+      options:
+        - Every time
+        - Intermittently
+        - Only on certain server versions or environments
+        - Not sure
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context or workaround
+      description: Does this work with direct REST calls or another DSpace version? Links to related issues are welcome.

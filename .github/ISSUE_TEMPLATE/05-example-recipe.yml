@@ -1,0 +1,38 @@
+name: Example / recipe proposal
+description: Request or share a practical script, notebook, or end-to-end workflow example
+title: "Example: "
+labels: [examples]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What should the example demonstrate?
+      description: State the task and intended audience.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Workflow and prerequisites
+      description: Outline the main steps, permissions, dependencies, and setup.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Supported DSpace / DSpace-CRIS versions (if known)
+  - type: textarea
+    id: code
+    attributes:
+      label: Sanitized code or pseudocode (optional)
+      description: Never include real credentials, tokens, or private records.
+      render: python
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected result and limitations
+      description: What should readers see, and what caveats matter?
+  - type: textarea
+    id: references
+    attributes:
+      label: Related documentation or issues (optional)

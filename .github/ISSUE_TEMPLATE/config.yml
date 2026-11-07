@@ -1,0 +1,6 @@
+blank_issues_enabled: true
+# Optional: enable GitHub Discussions and add a contact link here when available.
+# contact_links:
+#   - name: Questions and early ideas
+#     url: https://github.com/OWNER/dspace-api-toolkit/discussions
+#     about: Ask questions or discuss ideas before filing a focused issue.
