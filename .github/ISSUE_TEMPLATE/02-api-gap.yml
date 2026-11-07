@@ -1,0 +1,48 @@
+name: API gap / missing capability
+description: Tell us about a REST operation or DSpace workflow the toolkit cannot currently support
+title: "API gap: "
+labels: [api-gap]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        You do not need to know the REST endpoint or propose Python code. Describe what you want to accomplish; API details are optional.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to accomplish?
+      description: Describe the end-to-end workflow and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: limitation
+    attributes:
+      label: What is missing or difficult today?
+      description: Is an endpoint not exposed, a workflow cumbersome, or behavior different across server versions?
+    validations:
+      required: true
+  - type: input
+    id: server
+    attributes:
+      label: DSpace / DSpace-CRIS version (if known)
+      placeholder: e.g. DSpace-CRIS 2025.02
+  - type: input
+    id: endpoint
+    attributes:
+      label: REST method and endpoint (optional)
+      placeholder: e.g. PATCH /server/api/... 
+  - type: textarea
+    id: api-details
+    attributes:
+      label: API documentation or request/response details (optional)
+      description: Links, sanitized payloads, and differences between versions are useful.
+  - type: textarea
+    id: desired
+    attributes:
+      label: What would useful toolkit support look like?
+      description: Describe the expected behavior or an optional pseudocode example.
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current workaround and impact (optional)
+      description: What do you do today, and what would this unlock?

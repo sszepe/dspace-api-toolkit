@@ -1,0 +1,39 @@
+name: Compatibility feedback
+description: Report version-specific behavior across DSpace and DSpace-CRIS, even when not clearly a bug
+title: "Compatibility: "
+labels: [compatibility]
+body:
+  - type: textarea
+    id: operation
+    attributes:
+      label: Which operation or workflow?
+      description: Toolkit method, feature, or relevant REST endpoint.
+    validations:
+      required: true
+  - type: input
+    id: toolkit
+    attributes:
+      label: Toolkit version (if known)
+  - type: textarea
+    id: environments
+    attributes:
+      label: DSpace / DSpace-CRIS versions tested
+      description: Include versions, distributions, and relevant configuration differences.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior per version
+      description: Note what works, what differs, or what is unsupported. Include sanitized HTTP statuses or errors if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior or desired compatibility guidance (optional)
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction or references (optional)
+      description: Do not include secrets or sensitive server data.

@@ -1,0 +1,149 @@
+# Compatibility matrix: runs tests/integration against DSpace / DSpace-CRIS
+# stacks (integration/targets.yml), one job per target, then builds
+# reports/matrix.{md,html,json} and compares it with the previous run.
+# Triggered weekly, by hand, and as a reusable workflow from ci.yml (smoke
+# test on main) and release.yml (full matrix before publishing).
+name: Integration matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: "Target names, space separated (empty = all in integration/targets.yml)"
+        required: false
+        default: ""
+      large_upload_mb:
+        description: "Size of the large-upload test file in MB (0 = skip)"
+        required: false
+        default: "64"
+  workflow_call:
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+    inputs:
+      targets:
+        type: string
+        required: false
+        default: ""
+      large_upload_mb:
+        type: string
+        required: false
+        default: "64"
+  schedule:
+    - cron: "00 3 * * 1"          # Mondays 03:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  targets:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.list.outputs.list }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - id: list
+        env:
+          SELECTED: ${{ inputs.targets }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, yaml
+          names = [t["name"] for t in yaml.safe_load(open("integration/targets.yml"))["targets"]]
+          selected = os.environ.get("SELECTED", "").split()
+          unknown = set(selected) - set(names)
+          if unknown:
+              raise SystemExit(f"unknown targets: {sorted(unknown)}")
+          print("list=" + json.dumps(selected or names))
+          PY
+
+  integration:
+    needs: targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      # optional repository secrets - avoid Docker Hub's anonymous pull limits
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.targets.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Log in to Docker Hub
+        if: env.DOCKERHUB_USERNAME != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Install toolkit and test dependencies
+        run: pip install -e ".[integration]"
+      - name: Run integration tests on ${{ matrix.target }}
+        env:
+          DSPACE_IT_LARGE_UPLOAD_MB: ${{ inputs.large_upload_mb || '64' }}
+        run: python -m integration.run_matrix -t "${{ matrix.target }}" --reports reports --no-matrix
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.target }}
+          path: reports/
+          if-no-files-found: warn
+
+  matrix:
+    needs: integration
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: report-*
+          merge-multiple: true
+          path: reports
+      - name: Restore previous matrix (baseline)
+        uses: actions/cache/restore@v4
+        with:
+          path: baseline
+          key: matrix-baseline-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: matrix-baseline-${{ github.ref_name }}-
+      - name: Build matrix
+        id: build
+        run: |
+          args="--reports reports"
+          if [ -f baseline/matrix.json ]; then args="$args --baseline baseline/matrix.json"; fi
+          set +e
+          python -m integration.build_matrix $args
+          echo "rc=$?" >> "$GITHUB_OUTPUT"
+          cat reports/matrix.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload matrix
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatibility-matrix
+          path: |
+            reports/matrix.md
+            reports/matrix.html
+            reports/matrix.json
+      - name: Save matrix as next baseline
+        run: mkdir -p baseline && cp reports/matrix.json baseline/matrix.json
+      - uses: actions/cache/save@v4
+        with:
+          path: baseline
+          key: matrix-baseline-${{ github.ref_name }}-${{ github.run_id }}
+      - name: Fail on regressions
+        if: steps.build.outputs.rc != '0'
+        run: |
+          echo "::error::Features that passed in the previous run now fail - see the job summary"
+          exit 1
