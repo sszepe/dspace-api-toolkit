@@ -4,6 +4,7 @@ matrix builder and stack runner. No Docker or DSpace server needed.
 """
 
 import json
+import os
 import shutil
 import subprocess
 from types import SimpleNamespace
@@ -269,11 +270,11 @@ class FakeHttp:
         return Mock(status_code=200, json=Mock(return_value={"type": "root", "dspaceVersion": "DSpace 9.1"}))
 
 
-def make_runner(tmp_path, run=None, http=None, keep=False, clock=None):
+def make_runner(tmp_path, run=None, http=None, keep=False, clock=None, report_only=False):
     ticks = iter(range(0, 100000, 5))
     return rm.MatrixRunner(workdir=str(tmp_path / "work"), reports_dir=str(tmp_path / "reports"), keep=keep,
                            run=run or FakeRun(), http_get=http or FakeHttp(), sleep=Mock(),
-                           clock=clock or (lambda: next(ticks)), log=Mock())
+                           clock=clock or (lambda: next(ticks)), log=Mock(), report_only=report_only)
 
 
 class TestTargets:
@@ -375,6 +376,19 @@ class TestRunner:
         assert runner.run_target(target(startup_timeout=60)) is False
         assert "not ready after 60s" in json.loads((tmp_path / "reports" / "dspace-9.json").read_text())["setup_error"]
 
+    @pytest.mark.parametrize("pytest_rc,report_only,ok", [
+        (0, False, True), (1, False, False),            # default: any failed test fails the target
+        (0, True, True), (1, True, True),               # report_only: failed tests only go into the matrix
+        (2, True, False), (3, True, False), (4, True, False), (5, True, False),   # pytest could not run
+    ])
+    def test_report_only(self, tmp_path, pytest_rc, report_only, ok):
+        runner = make_runner(tmp_path, run=FakeRun(pytest_rc=pytest_rc), report_only=report_only)
+        assert runner.run_target(target()) is ok
+        assert runner.run_existing("x", "http://x", "u", "p") is ok
+
+    def test_report_only_still_fails_when_the_stack_does_not_start(self, tmp_path):
+        assert make_runner(tmp_path, run=FakeRun(up_rc=1), report_only=True).run_target(target()) is False
+
     def test_admin_already_exists_is_fine_other_errors_are_not(self, tmp_path):
         ok = FakeRun(exec_rc=1, exec_out="Error: an admin account with this email already exists")
         assert make_runner(tmp_path, run=ok).run_target(target()) is True
@@ -472,6 +486,23 @@ class TestCli:
                         "--reports", str(tmp_path / "r")], runner_factory=make)
         assert code == 0
         created["runner"].run_existing.assert_called_once_with("existing", "http://x", "u", "p")
+
+    def test_report_only_is_passed_to_the_runner(self, tmp_path):
+        seen = {}
+
+        def make(**kwargs):
+            seen.update(kwargs)
+            return self.factory(tmp_path, {})[0](**kwargs)
+        rm.main(["-t", "dspace-9", "--no-matrix", "--reports", str(tmp_path / "r"), "--report-only"],
+                runner_factory=make)
+        assert seen["report_only"] is True
+        rm.main(["-t", "dspace-9", "--no-matrix", "--reports", str(tmp_path / "r")], runner_factory=make)
+        assert seen["report_only"] is False
+
+    def test_workflow_uses_report_only(self):
+        workflow = open(os.path.join(rm.REPO_ROOT, ".github", "workflows", "integration-matrix.yml")).read()
+        assert "--no-matrix --report-only" in workflow
+        assert "matrix-baseline-main-" in workflow          # tag runs compare against main
 
     def test_regression_fails_the_run(self, tmp_path):
         reports = tmp_path / "reports"
