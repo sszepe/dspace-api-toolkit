@@ -12,12 +12,12 @@ flowchart LR
     end
 
     subgraph release["Release: push tag vX.Y.Z"]
-        direction LR
-        V["verify<br/>tag = version,<br/>CHANGELOG section,<br/>unit tests"] --> B["build<br/>sdist + wheel,<br/>twine check"]
-        V --> I["full integration<br/>matrix"]
-        B --> T["publish to<br/>TestPyPI"]
-        I --> T
-        T --> S["install smoke test<br/>from TestPyPI"]
+         direction LR
+         V["verify<br/>tag = version,<br/>CHANGELOG section,<br/>unit tests"] --> B["build<br/>sdist + wheel,<br/>twine check"]
+         V --> I["full integration matrix<br/>fails only on regressions"]
+         B --> T["publish to<br/>TestPyPI"]
+         I --> T
+         T --> S["install smoke test<br/>from TestPyPI"]
         S --> A{"approve<br/>(environment pypi)"}
         A --> P["publish to PyPI"]
         P --> G["GitHub release<br/>notes + dists + matrix"]
@@ -167,7 +167,7 @@ The project follows [Semantic Versioning](https://semver.org/):
 | Problem | What to do |
 |---|---|
 | `verify` fails: tag does not match | Fix `_version.py` or the changelog on `main`, then tag the next version (tags cannot be moved). |
-| Integration matrix fails | Open the matrix in the run's artifacts. Fix it, or mark the target as not supported, then release a new patch version. |
+| Integration matrix fails | Failed tests alone do not fail it: they show up as "failed" in the matrix. The job fails only if a stack did not start, or a feature that passed in the last run on `main` now fails (regression). Open the matrix and the `report-<target>` artifacts (test report, container log), fix it, and release a new patch version. |
 | TestPyPI upload rejected: version exists | Each version can be uploaded only once, even after deletion. Use the next version (or the next `rcN`). |
 | Publishing fails with an OIDC / trusted publisher error | Compare the publisher settings on PyPI with the table above: workflow file name and environment name must match exactly. |
-| A broken version reached PyPI | Do not delete it. *Yank* it on PyPI (pip then skips it) and release a fixed patch version. |
+| A broken version 

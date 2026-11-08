@@ -90,6 +90,14 @@ class SubmissionError(DSpaceError):
         self.workspace_item = workspace_item
 
 
+def describe_errors(errors, limit=5):
+    """Short text of DSpace validation errors: "message (path, path); ..." - used in SubmissionError messages."""
+    parts = [f"{e.get('message')} ({', '.join(e.get('paths') or []) or 'no path'})" for e in (errors or [])[:limit]]
+    if len(errors or []) > limit:
+        parts.append(f"and {len(errors) - limit} more")
+    return "; ".join(parts)
+
+
 class WorkspaceManager(BaseManager):
     """Manages DSpace workspace items"""
 
@@ -1315,7 +1323,8 @@ class WorkspaceManager(BaseManager):
             if getattr(exc, "status_code", None) != 422:
                 raise
             ws = self.get(ws_id)
-            raise SubmissionError(f"Workspace item {ws_id} is not complete", errors=self.validation_errors(ws),
+            errors = self.validation_errors(ws)
+            raise SubmissionError(f"Workspace item {ws_id} is not complete: {describe_errors(errors)}", errors=errors,
                                   workspace_item=ws, status_code=422, response_text=exc.response_text) from exc
         logger.info("Deposited workspace item %s", ws_id)
         return self._json_or_none(response) or {}
@@ -1381,7 +1390,8 @@ class WorkspaceManager(BaseManager):
                       "errors": self.validation_errors(ws)}
             if deposit:
                 if result["errors"]:
-                    raise SubmissionError(f"Workspace item {ws_id} is not complete", errors=result["errors"],
+                    raise SubmissionError(f"Workspace item {ws_id} is not complete: {describe_errors(result['errors'])}",
+                                          errors=result["errors"],
                                           workspace_item=ws)
                 result["workflow_item"] = self.deposit(ws_id)
             return result

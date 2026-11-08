@@ -89,7 +89,9 @@ jobs:
       - name: Run integration tests on ${{ matrix.target }}
         env:
           DSPACE_IT_LARGE_UPLOAD_MB: ${{ inputs.large_upload_mb || '64' }}
-        run: python -m integration.run_matrix -t "${{ matrix.target }}" --reports reports --no-matrix
+        # --report-only: failed tests go into the matrix and keep this job green; it fails only if the
+        # stack does not start or pytest cannot run. The matrix job below fails on regressions.
+        run: python -m integration.run_matrix -t "${{ matrix.target }}" --reports reports --no-matrix --report-only
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
@@ -118,7 +120,10 @@ jobs:
         with:
           path: baseline
           key: matrix-baseline-${{ github.ref_name }}-${{ github.run_id }}
-          restore-keys: matrix-baseline-${{ github.ref_name }}-
+          # same branch first; tags and new branches compare against the last run on main
+          restore-keys: |
+            matrix-baseline-${{ github.ref_name }}-
+            matrix-baseline-main-
       - name: Build matrix
         id: build
         run: |

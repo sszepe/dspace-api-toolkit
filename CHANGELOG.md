@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## Changed
+
+- `run_matrix --report-only` (used in CI): failed tests only go into the
+  compatibility matrix. A target fails only if its stack does not start or
+  pytest cannot run, and the matrix job fails only on regressions against the
+  previous run (on `main` for tags), so features a DSpace version does not
+  support no longer block a release.
+- `SubmissionError` messages list the validation errors ("is not complete:
+  error.validation.required (/sections/...)").
+
+
 ## [0.1.0] - 2026-11-08
 
 First public release.
