@@ -1,0 +1,12 @@
+# Default owner for everything in the repo
+*                       @sszepe
+
+# Security-sensitive areas – changes here always need the owner
+/.github/               @sszepe
+/.github/workflows/     @sszepe
+/.github/CODEOWNERS     @sszepe
+SECURITY.md             @sszepe
+
+# Dependencies and packaging
+pyproject.toml          @sszepe
+requirements*.txt       @sszepe
