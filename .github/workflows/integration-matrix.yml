@@ -92,7 +92,7 @@ jobs:
         run: python -m integration.run_matrix -t "${{ matrix.target }}" --reports reports --no-matrix
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: report-${{ matrix.target }}
           path: reports/
@@ -129,7 +129,7 @@ jobs:
           echo "rc=$?" >> "$GITHUB_OUTPUT"
           cat reports/matrix.md >> "$GITHUB_STEP_SUMMARY"
       - name: Upload matrix
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compatibility-matrix
           path: |
