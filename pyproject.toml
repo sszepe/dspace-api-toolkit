@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dspace-api-toolkit"
+dynamic = ["version"]
+description = "Python toolkit for the DSpace 7+ and DSpace-CRIS REST API: items, submissions, bitstreams (streamed large uploads), access control, communities, collections, versioning"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+authors = [{ name = "Stefan Szepe" }]
+keywords = ["dspace", "dspace-cris", "repository", "rest-api", "institutional-repository", "open-access"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "responses>=0.23",
+]
+integration = [
+    "pytest>=7.4",
+    "responses>=0.23",
+    "pyyaml>=6.0",
+]
+dev = [
+    "dspace-api-toolkit[test,integration]",
+    "build>=1.2",
+    "twine>=5.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/sszepe/dspace-api-toolkit"
+Documentation = "https://github.com/sszepe/dspace-api-toolkit#readme"
+Changelog = "https://github.com/sszepe/dspace-api-toolkit/blob/main/CHANGELOG.md"
+Issues = "https://github.com/sszepe/dspace-api-toolkit/issues"
+"Compatibility matrix" = "https://github.com/sszepe/dspace-api-toolkit/actions/workflows/integration-matrix.yml"
+
+[tool.setuptools.dynamic]
+version = { attr = "dspace_api._version.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["dspace_api", "dspace_api.*"]

@@ -1,0 +1,162 @@
+# Release pipeline, started by pushing a tag vX.Y.Z (or vX.Y.ZrcN):
+#
+#   verify       tag == dspace_api/_version.py, CHANGELOG has the section, unit tests pass
+#   build        sdist + wheel, twine check
+#   integration  full compatibility matrix against every target in integration/targets.yml
+#   testpypi     publish to TestPyPI (Trusted Publishing, environment "testpypi")
+#   smoke        pip install from TestPyPI in a clean venv, import
+#   pypi         publish to PyPI (Trusted Publishing, environment "pypi" - add a required reviewer)
+#   github       GitHub release with the changelog section, dists and the matrix
+#
+# No API tokens: PyPI/TestPyPI trust this workflow file via OIDC (see RELEASING.md).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: version
+        name: Tag matches package version and changelog
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re
+          tag = os.environ["GITHUB_REF_NAME"]
+          ns = {}
+          exec(open("dspace_api/_version.py").read(), ns)
+          version = ns["__version__"]
+          if tag != f"v{version}":
+              raise SystemExit(f"tag {tag} does not match dspace_api/_version.py ({version})")
+          if f"## [{version}]" not in open("CHANGELOG.md", encoding="utf-8").read():
+              raise SystemExit(f"CHANGELOG.md has no '## [{version}]' section")
+          print(f"version={version}")
+          print(f"prerelease={'true' if re.search(r'(a|b|rc|dev)[0-9]+$', version) else 'false'}")
+          PY
+      - run: python -m pip install -e ".[test]"
+      - run: python -m pytest
+
+  build:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  integration:
+    needs: verify
+    uses: ./.github/workflows/integration-matrix.yml
+    secrets: inherit
+    with:
+      targets: ""          # all targets
+
+  testpypi:
+    needs: [verify, build, integration]
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/dspace-api-toolkit/${{ needs.verify.outputs.version }}/
+    permissions:
+      id-token: write       # Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  smoke:
+    needs: [verify, testpypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install from TestPyPI (dependencies from PyPI)
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          python -m venv /tmp/venv
+          for attempt in 1 2 3 4 5 6; do
+            /tmp/venv/bin/pip install --no-cache-dir --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple/ "dspace-api-toolkit==$VERSION" && break
+            echo "not on the index yet, retrying in 30s"; sleep 30
+          done
+          cd /tmp && /tmp/venv/bin/python -c "import dspace_api; assert dspace_api.__version__ == '$VERSION'; print('ok', dspace_api.__version__)"
+
+  pypi:
+    needs: [verify, smoke]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/dspace-api-toolkit/${{ needs.verify.outputs.version }}/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github:
+    needs: [verify, pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: compatibility-matrix
+          path: matrix/
+      - name: Release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os, re
+          version = os.environ["VERSION"]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          match = re.search(rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
+          notes = match.group(1).strip()
+          notes += "\n\n### Compatibility matrix\n\n" + open("matrix/matrix.md", encoding="utf-8").read()
+          open("notes.md", "w", encoding="utf-8").write(notes)
+          PY
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          flags=""
+          if [ "$PRERELEASE" = "true" ]; then flags="--prerelease"; fi
+          gh release create "$TAG" dist/* matrix/matrix.html matrix/matrix.json \
+            --title "$TAG" --notes-file notes.md $flags

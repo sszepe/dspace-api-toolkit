@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new helper, improvement, or workflow beyond a specific missing REST endpoint
+title: "Feature: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please focus on the problem and desired outcome. For a specific missing REST endpoint, consider the API gap template instead.
+  - type: textarea
+    id: audience
+    attributes:
+      label: Who would benefit?
+      description: e.g. repository administrators, metadata curators, migration teams, or integrators
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: What are you trying to do?
+      description: Describe the workflow, including scale or constraints where useful.
+    validations:
+      required: true
+  - type: textarea
+    id: pain
+    attributes:
+      label: What makes this difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: What would success look like?
+      description: A proposed API design is welcome but not required.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Relevant DSpace / DSpace-CRIS versions (if known)
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds, alternatives, or related issues (optional)

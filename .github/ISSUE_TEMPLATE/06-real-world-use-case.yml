@@ -1,0 +1,53 @@
+name: Real-world use case
+description: Share how you use the toolkit in a repository, migration, integration, or automation
+title: "Use case: "
+labels: [use-case]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Short descriptions are welcome. You can remain anonymous and omit organization names, private architecture, source code, and sensitive repository data.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and purpose
+      description: What kind of repository or integration is involved, and what problem does it solve?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: How is the toolkit used?
+      description: Describe the workflow and how the toolkit fits in.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: DSpace / DSpace-CRIS versions (if shareable)
+  - type: textarea
+    id: scale
+    attributes:
+      label: Scale and constraints (optional)
+      description: Approximate record counts, frequency, performance needs, and operational constraints.
+  - type: textarea
+    id: lessons
+    attributes:
+      label: What worked, what was difficult, and what would help?
+      description: Include workarounds, surprising behavior, or gaps.
+  - type: textarea
+    id: resources
+    attributes:
+      label: Reusable material (optional)
+      description: Sanitized examples, public architecture diagrams, or links.
+  - type: dropdown
+    id: permission
+    attributes:
+      label: May maintainers reference this use case in public project documentation?
+      options:
+        - No, keep it in this issue only
+        - Yes, with attribution to my GitHub account
+        - Yes, anonymously
+        - Please ask me first
+    validations:
+      required: true
