@@ -13,6 +13,7 @@ FEATURES = {
     "auth.login": "Password login, CSRF handling, current user",
     "auth.relogin": "Automatic re-login after a 401 (expired/invalid token)",
     "auth.refresh": "Proactive token refresh before expiry",
+    "auth.on_behalf": "'Login as' another user via X-On-Behalf-Of (webui.user.assumelogin), refusals explained",
     # Items
     "items.crud": "Create, read, update (replace) and delete archived items",
     "items.upsert": "upsert_metadata: add new fields, replace existing ones",

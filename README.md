@@ -79,6 +79,34 @@ More scripts will be added in the [`examples/`](examples/) folder.
 Every read accepts `all_languages=`, `projection=` and `embed=` (including
 nested embeds with sizes) to shape the response.
 
+### Acting as another user ("login as")
+
+An administrator's session can send requests as another eperson with the
+`X-On-Behalf-Of` header. DSpace then applies that user's permissions and,
+for example, records them as the submitter:
+
+```python
+with client.on_behalf_of("jane@example.org"):          # UUID, email or eperson dict
+    client.authorizations.can(item, Feature.CAN_EDIT_METADATA)   # Jane's permissions
+    client.workspace.submit(collection_uuid, {"dc.title": "..."})  # Jane is the submitter
+```
+
+The server needs `webui.user.assumelogin = true` (off by default in plain
+DSpace, on in DSpace-CRIS). The logged-in user must be an administrator, and
+the target must not be one. DSpace-CRIS allows administrators as targets with
+`webui.user.assumelogin.admin = true`.
+
+On entering the block, the toolkit checks once that the server accepts the
+header. If it doesn't, it raises `OnBehalfOfError` with the actual reason:
+the feature is off, the eperson is unknown, the target is an administrator,
+or you are not an administrator. DSpace itself only answers "400
+Authentication request is invalid". Pass `verify=False` to skip the check.
+
+Only requests of this client in the current thread or asyncio task carry
+the header. The toolkit's own login, token refresh and status requests
+never do. A 403 inside the block stays an `AuthorizationError`: the other
+user is not allowed to do that.
+
 ## Configuration
 
 Arguments win over environment variables, which win over a `.env` file in the

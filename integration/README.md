@@ -51,6 +51,22 @@ NOTE: As we didn't find a suitable DSpace 7 docker image, DSpace 7 is not includ
 the test matrix even though the dspace-api-toolkit states that the DSpace 7+ is
 supported.
 
+### DSpace settings (local.cfg)
+
+The images ship no `local.cfg`. The runner writes
+`.integration/<target>/local.cfg` from the `local_cfg` entries in
+`targets.yml` (defaults plus the target's own) and mounts it read-only as
+`/dspace/config/local.cfg`. Currently it holds:
+
+```
+webui.user.assumelogin = true     # "login as" via X-On-Behalf-Of (tests/integration/test_it_on_behalf.py)
+```
+
+A list value repeats the key. Environment variables from the compose files
+(`dspace__P__...`) still take precedence over `local.cfg`. DSpace reads the file
+at startup only: after changing it, restart the target (`--down`, then `--up`
+or a test run).
+
 ### Adding or pinning a target
 
 Add an entry to `targets.yml` (unique `name` and `port`). Without `env`, the
