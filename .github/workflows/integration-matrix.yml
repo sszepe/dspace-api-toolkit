@@ -1,6 +1,9 @@
 # Compatibility matrix: runs tests/integration against DSpace / DSpace-CRIS
 # stacks (integration/targets.yml), one job per target, then builds
 # reports/matrix.{md,html,json} and compares it with the previous run.
+# Failed tests only go into the matrix (--report-only): a target job fails
+# only if its stack does not start or pytest cannot run, and the matrix job
+# fails only on regressions - features that passed in the previous run.
 # Triggered weekly, by hand, and as a reusable workflow from ci.yml (smoke
 # test on main) and release.yml (full matrix before publishing).
 name: Integration matrix
@@ -89,7 +92,9 @@ jobs:
       - name: Run integration tests on ${{ matrix.target }}
         env:
           DSPACE_IT_LARGE_UPLOAD_MB: ${{ inputs.large_upload_mb || '64' }}
-        run: python -m integration.run_matrix -t "${{ matrix.target }}" --reports reports --no-matrix
+        # --report-only: failed tests go into the matrix and keep this job green; it fails only if the
+        # stack does not start or pytest cannot run. The matrix job below fails on regressions.
+        run: python -m integration.run_matrix -t "${{ matrix.target }}" --reports reports --no-matrix --report-only
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v7
@@ -114,11 +119,14 @@ jobs:
           merge-multiple: true
           path: reports
       - name: Restore previous matrix (baseline)
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: baseline
           key: matrix-baseline-${{ github.ref_name }}-${{ github.run_id }}
-          restore-keys: matrix-baseline-${{ github.ref_name }}-
+          # same branch first; tags (release.yml) and new branches compare against the last run on main
+          restore-keys: |
+            matrix-baseline-${{ github.ref_name }}-
+            matrix-baseline-main-
       - name: Build matrix
         id: build
         run: |
@@ -138,7 +146,7 @@ jobs:
             reports/matrix.json
       - name: Save matrix as next baseline
         run: mkdir -p baseline && cp reports/matrix.json baseline/matrix.json
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         with:
           path: baseline
           key: matrix-baseline-${{ github.ref_name }}-${{ github.run_id }}
