@@ -31,6 +31,15 @@ class UserAgreementRequired(AuthorizationError):
     """
     pass
 
+class OnBehalfOfError(DSpaceError):
+    """
+    A request sent with X-On-Behalf-Of ("login as") was refused. DSpace
+    allows it only when webui.user.assumelogin = true, for an administrator's
+    login, and not for another administrator as target (DSpace-CRIS: unless
+    webui.user.assumelogin.admin = true).
+    """
+    pass
+
 class NotFoundError(DSpaceError):
     """Exception raised when a resource is not found"""
     pass
@@ -63,7 +72,23 @@ def handle_response_error(response, operation_name="API operation"):
         Appropriate DSpaceError subclass based on status code
     """
     status_code = response.status_code
+    acting_as = getattr(response, "dspace_on_behalf_of", None)
+    acting_as = acting_as if isinstance(acting_as, str) else None     # set by DSpaceSession only
+    text = response.text if isinstance(getattr(response, "text", None), str) else ""
 
+    # A 403 inside an on_behalf_of() block is usually the point of the
+    # exercise (the other user may not do this) and stays an AuthorizationError.
+    if acting_as and (status_code == 401 or (status_code == 400 and "Authentication request is invalid" in text)):
+        reasons = {
+            400: "the server has 'login as' switched off (webui.user.assumelogin), the UUID is not an "
+                 "eperson, or the eperson is an administrator",
+            401: "X-On-Behalf-Of needs a logged-in administrator",
+        }
+        raise OnBehalfOfError(
+            f"{operation_name} failed: 'login as' {acting_as} refused - {reasons[status_code]}",
+            status_code=status_code,
+            response_text=response.text
+        )
     if status_code == 400:
         raise BadRequestError(
             f"{operation_name} failed: Bad Request",

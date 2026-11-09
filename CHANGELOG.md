@@ -6,18 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.1.1] - 2026-11-09
+## [0.2.0] - 2026-11-09
 
-## Changed
+Impersonate Release (X-On-Behalf-Of)
 
-- `run_matrix --report-only` (used in CI): failed tests only go into the
-  compatibility matrix. A target fails only if its stack does not start or
-  pytest cannot run, and the matrix job fails only on regressions against the
-  previous run (on `main` for tags), so features a DSpace version does not
-  support no longer block a release.
-- `SubmissionError` messages list the validation errors ("is not complete:
-  error.validation.required (/sections/...)").
+### Added
 
+- "Login as" another user: `client.on_behalf_of(eperson)` (or
+  `dspace_api.on_behalf.on_behalf_of(auth, eperson)`) sends `X-On-Behalf-Of`
+  on the requests in the block. It is local to the thread or task and never
+  sent on the toolkit's own login and refresh requests. It checks once that
+  the server accepts the header and raises `OnBehalfOfError` with the reason
+  (`webui.user.assumelogin` off, unknown eperson, target is an
+  administrator, not logged in as an administrator).
+- Integration test suite against DSpace 8/9/10 and DSpace-CRIS 2024.02/2025.02
+  via Docker Compose, with a compatibility matrix (Markdown / HTML / JSON) and
+  regression detection. The test stacks get a generated `local.cfg`
+  (`local_cfg` in targets.yml) mounted as `/dspace/config/local.cfg`; it sets
+  `webui.user.assumelogin = true` for the `auth.on_behalf` tests.
 
 ## [0.1.0] - 2026-11-08
 
@@ -62,6 +68,3 @@ First public release.
   for service accounts, and opt-in `DSpaceConfig(accept_user_agreement=True)`
   / `DSPACE_ACCEPT_USER_AGREEMENT=true` to accept it automatically for the
   logged-in user. Default behaviour is unchanged.
-- Integration test suite against DSpace 8/9/10 and DSpace-CRIS 2024.02/2025.02
-  via Docker Compose, with a compatibility matrix (Markdown / HTML / JSON) and
-  regression detection.
