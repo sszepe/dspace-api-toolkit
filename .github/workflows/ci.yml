@@ -32,14 +32,14 @@ jobs:
           - os: macos-latest
             python: "3.13"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
       - run: python -m pip install -e ".[test]"
       - run: python -m pytest      # pytest.ini: coverage report + .coveragerc fail_under=100
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
         with:
           name: coverage-html
@@ -48,8 +48,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - run: python -m pip install build twine
@@ -69,7 +69,7 @@ jobs:
           python -m venv /tmp/venv
           /tmp/venv/bin/pip install dist/*.whl
           cd /tmp && /tmp/venv/bin/python -c "import dspace_api, sys; print(dspace_api.__version__); from dspace_api import DSpaceClient"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
