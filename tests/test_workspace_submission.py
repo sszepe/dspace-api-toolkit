@@ -565,3 +565,12 @@ class TestSubmit:
         with pytest.raises(ValueError):
             mgr.submit(COLL, {"local.unknown": "x"}, delete_on_error=True)
         assert [c for c in submit_server.calls if c.request.method == "DELETE"]
+
+
+def test_describe_errors():
+    from dspace_api.workspaces import describe_errors
+    errors = [{"message": f"error.{i}", "paths": [f"/sections/s/{i}"]} for i in range(7)] + [{"message": "x"}]
+    text = describe_errors(errors, limit=2)
+    assert text == "error.0 (/sections/s/0); error.1 (/sections/s/1); and 6 more"
+    assert describe_errors([{"message": "x"}]) == "x (no path)"
+    assert describe_errors([]) == "" and describe_errors(None) == ""

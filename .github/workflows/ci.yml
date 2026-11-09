@@ -1,7 +1,8 @@
-# Unit tests (100% coverage gate) on every push / PR, Python 3.10-3.14,
-# Linux + Windows; builds and checks the distributions; on main also runs a
-# smoke integration test against one DSpace stack.
-# we can then run integration tests against multiple DSpace stacks if needed.
+# Unit tests (100% coverage gate) on every push / PR: Python 3.10-3.14 on
+# Linux, plus Windows (3.12) and macOS (3.13); builds and checks the
+# distributions; on main also runs a smoke integration test against one
+# DSpace stack (dspace-9). All targets: integration-matrix.yml (weekly, by
+# hand, and before every release).
 name: CI
 
 on:
