@@ -20,6 +20,14 @@ Results: reports/<target>.json (+ .xml JUnit, -docker.log), then
 reports/matrix.{md,html,json}. Exit code 1 if any test failed or a stack
 could not be started.
 
+--report-only: failed tests only go into the matrix and do not set the exit
+code - the matrix documents what each DSpace version supports. The exit code
+is still 1 if a stack could not be started, pytest could not run the suite
+(exit codes 2-5: interrupted, internal error, usage error, nothing
+collected), or - when the matrix is built here - a feature regressed against
+--baseline. CI runs every target with --report-only and lets the matrix job
+fail only on regressions.
+
 Requirements: Docker with Compose >= 2.24 (for !reset/!override in the
 override file), ~4 GB RAM per running target, PyYAML, requests.
 """
@@ -153,12 +161,13 @@ services:
 class MatrixRunner:
     def __init__(self, workdir=".integration", reports_dir="reports", keep=False, refresh=False,
                  pytest_args=(), run=subprocess.run, http_get=requests.get, sleep=time.sleep,
-                 clock=time.monotonic, log=print):
+                 clock=time.monotonic, log=print, report_only=False):
         self.workdir = os.path.abspath(workdir)
         self.reports_dir = os.path.abspath(reports_dir)
         self.keep = keep
         self.refresh = refresh
         self.pytest_args = list(pytest_args)
+        self.report_only = report_only
         self.run = run
         self.http_get = http_get
         self.sleep = sleep
@@ -288,6 +297,10 @@ class MatrixRunner:
         result = self.run(self.pytest_command(target), env=env, cwd=REPO_ROOT)
         return result.returncode
 
+    def tests_ok(self, code):
+        """pytest exit code -> target OK? 1 (some tests failed) is OK with report_only."""
+        return code == 0 or (self.report_only and code == 1)
+
     def write_setup_error(self, target, message):
         path = os.path.join(self.reports_dir, f"{target['name']}.json")
         with open(path, "w", encoding="utf-8") as fh:
@@ -298,7 +311,7 @@ class MatrixRunner:
     # -- one target -------------------------------------------------------
 
     def run_target(self, target):
-        """Returns True if the stack came up and every test passed (or was skipped)."""
+        """True if the stack came up and every test passed or was skipped (report_only: the suite ran)."""
         os.makedirs(self.reports_dir, exist_ok=True)
         name = target["name"]
         files = None
@@ -311,7 +324,7 @@ class MatrixRunner:
             self.create_admin(target, files)
             self.run_setup(target, files)
             code = self.run_tests(target, api_url(target), target["admin_email"], target["admin_password"])
-            return code == 0
+            return self.tests_ok(code)
         except StackError as exc:
             self.log(f"[{name}] STACK ERROR: {exc}")
             self.write_setup_error(target, str(exc))
@@ -328,7 +341,7 @@ class MatrixRunner:
     def run_existing(self, name, url, user, password, label=""):
         os.makedirs(self.reports_dir, exist_ok=True)
         target = {"name": name, "label": label or name}
-        return self.run_tests(target, url, user, password) == 0
+        return self.tests_ok(self.run_tests(target, url, user, password))
 
 
 # ---------------------------------------------------------------------------
@@ -346,6 +359,9 @@ def main(argv=None, runner_factory=MatrixRunner):
     parser.add_argument("--workdir", default=".integration", help="Directory for compose files")
     parser.add_argument("--baseline", help="Previous matrix.json for regression detection")
     parser.add_argument("--no-matrix", action="store_true", help="Don't build the matrix at the end")
+    parser.add_argument("--report-only", action="store_true",
+                        help="Failed tests only go into the matrix; exit 1 only for stack/pytest errors and "
+                             "regressions (used in CI)")
     parser.add_argument("--existing", action="store_true", help="Test an already running installation (no Docker)")
     parser.add_argument("--url", help="--existing: REST API URL, e.g. https://host/server/api")
     parser.add_argument("--name", default="existing", help="--existing: column name in the matrix")
@@ -356,7 +372,7 @@ def main(argv=None, runner_factory=MatrixRunner):
     args = parser.parse_args(argv)
 
     runner = runner_factory(workdir=args.workdir, reports_dir=args.reports, keep=args.keep,
-                            refresh=args.refresh, pytest_args=args.pytest_args)
+                            refresh=args.refresh, pytest_args=args.pytest_args, report_only=args.report_only)
     if args.existing:
         if not (args.url and args.user and args.password):
             parser.error("--existing needs --url, --user and --password (or DSPACE_IT_USER/PASSWORD)")
