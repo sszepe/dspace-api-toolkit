@@ -2,7 +2,9 @@
 #
 #   verify       tag == dspace_api/_version.py, CHANGELOG has the section, unit tests pass
 #   build        sdist + wheel, twine check
-#   integration  full compatibility matrix against every target in integration/targets.yml
+#   integration  full compatibility matrix against every target in integration/targets.yml;
+#                fails only on regressions against the last run on main (unsupported
+#                features just show up as "failed" in the matrix)
 #   testpypi     publish to TestPyPI (Trusted Publishing, environment "testpypi")
 #   smoke        pip install from TestPyPI in a clean venv, import
 #   pypi         publish to PyPI (Trusted Publishing, environment "pypi" - add a required reviewer)
