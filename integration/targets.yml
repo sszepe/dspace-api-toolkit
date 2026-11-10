@@ -17,12 +17,20 @@
 # setup: DSpace CLI commands run in the backend after the admin is created
 # (best effort). Plain DSpace has no relationship types until the
 # configurable-entities model is loaded; DSpace-CRIS does not use them.
+#
+# local_cfg: DSpace settings written to a generated local.cfg that is mounted
+# as /dspace/config/local.cfg (the images ship none). A target's local_cfg
+# adds to / overrides the defaults; a list value repeats the key. Environment
+# variables set by the upstream compose file still win over local.cfg.
 
 defaults:
   admin_email: admin@example.org
   admin_password: "Toolkit-IT-2026!"
   startup_timeout: 1200        # seconds; first start runs all DB migrations
   memory_hint: "~4 GB per running target"
+  local_cfg:
+    # "login as" via the X-On-Behalf-Of header (off by default in plain DSpace)
+    webui.user.assumelogin: true
 
 targets:
   - name: dspace-8

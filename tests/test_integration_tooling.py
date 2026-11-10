@@ -307,6 +307,34 @@ class TestTargets:
         assert rm.project_name(target(name="CRIS 2025.02")) == "dsit-cris-2025-02"
         assert rm.api_url(target()) == "http://localhost:18090/server/api"
 
+    def test_local_cfg(self, tmp_path):
+        path = tmp_path / "t.yml"
+        path.write_text(yaml.safe_dump({
+            "defaults": {"local_cfg": {"webui.user.assumelogin": True, "a.b": "x"}},
+            "targets": [{"name": "one", "port": 1, "compose_url": "u", "local_cfg": {"a.b": "y", "list": ["1", "2"]}},
+                        {"name": "two", "port": 2, "compose_url": "u"}]}))
+        one, two = rm.load_targets(str(path))
+        assert one["local_cfg"] == {"webui.user.assumelogin": True, "a.b": "y", "list": ["1", "2"]}
+        assert two["local_cfg"] == {"webui.user.assumelogin": True, "a.b": "x"}
+        text = rm.local_cfg_text(one)
+        assert text.splitlines()[3:] == ["a.b = y", "list = 1", "list = 2", "webui.user.assumelogin = true"]
+        assert rm.local_cfg_text(target(local_cfg={"x": False})).endswith("x = false\n")
+        assert rm.local_cfg_text(target()).count("\n") == 3          # header only
+
+    def test_local_cfg_is_written_and_mounted(self, tmp_path):
+        runner = make_runner(tmp_path)
+        upstream, override = runner.prepare(target(local_cfg={"webui.user.assumelogin": True}))
+        local_cfg = tmp_path / "work" / "dspace-9" / "local.cfg"
+        assert "webui.user.assumelogin = true" in local_cfg.read_text()
+        volumes = yaml.load(open(override).read(), Loader=_TagLoader)["services"]["dspace"]["volumes"]
+        assert volumes == ["assetstore:/dspace/assetstore",
+                           {"type": "bind", "source": str(local_cfg), "target": "/dspace/config/local.cfg",
+                            "read_only": True}]
+
+    def test_repository_targets_allow_login_as(self):
+        for t in rm.load_targets():
+            assert t["local_cfg"].get("webui.user.assumelogin") is True, t["name"]
+
     @pytest.mark.skipif(not shutil.which("docker"), reason="docker CLI not installed")
     def test_override_merges_with_upstream_shape(self, tmp_path):
         upstream = tmp_path / "upstream.yml"
@@ -323,7 +351,9 @@ class TestTargets:
                                "ports": ["8983:8983"], "networks": ["dspacenet"]}},
             "volumes": {"assetstore": None}}))
         override = tmp_path / "override.yml"
-        override.write_text(rm.compose_override(target()))
+        local_cfg = tmp_path / "local.cfg"
+        local_cfg.write_text("webui.user.assumelogin = true\n")
+        override.write_text(rm.compose_override(target(), str(local_cfg)))
         result = subprocess.run(["docker", "compose", "-p", "x", "-f", str(upstream), "-f", str(override),
                                  "config", "--format", "json"], capture_output=True, text=True)
         if result.returncode and "unknown" in result.stderr.lower():
@@ -332,7 +362,9 @@ class TestTargets:
         merged = json.loads(result.stdout)["services"]
         assert "container_name" not in merged["dspace"] and "build" not in merged["dspace"]
         assert [p["published"] for p in merged["dspace"]["ports"]] == ["18090"]
-        assert [v["source"] for v in merged["dspace"]["volumes"]] == ["assetstore"]
+        volumes = merged["dspace"]["volumes"]
+        assert [v["source"] for v in volumes] == ["assetstore", str(local_cfg)]
+        assert volumes[1]["target"] == "/dspace/config/local.cfg" and volumes[1]["read_only"] is True
         assert not merged["dspacedb"].get("ports")
 
 

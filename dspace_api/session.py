@@ -32,6 +32,13 @@ directly - so all requests get the same behaviour:
   operation with several values is sent as "remove" (replace only) plus
   one "add /metadata/<field>/-" per value, so no value is lost silently.
 
+- "Login as" (X-On-Behalf-Of): inside DSpaceSession.on_behalf_of(uuid)
+  every request of this session in the current thread / asyncio task is
+  sent with "X-On-Behalf-Of: <uuid>". The toolkit's own requests (login,
+  token refresh, status, CSRF, projection checks) never carry it. Use
+  dspace_api.on_behalf.on_behalf_of() / DSpaceClient.on_behalf_of() for the
+  checked version with clear errors.
+
 - DSpace-CRIS answers every request of a user who has not accepted the
   end-user agreement with 403 "No user agreement accepted". With
   config.accept_user_agreement the agreement is accepted for the logged-in
@@ -54,6 +61,7 @@ import threading
 import time
 import weakref
 from contextlib import contextmanager
+from contextvars import ContextVar
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import requests
@@ -67,6 +75,7 @@ logger = logging.getLogger(__name__)
 
 # XSRF token header used by DSpace
 XSRF_RESPONSE_HEADER = "DSPACE-XSRF-TOKEN"
+ON_BEHALF_OF_HEADER = "X-On-Behalf-Of"
 # HTTP methods considered idempotent by the session manager
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "PUT", "DELETE"})
 # The server did not process the request -> safe to retry any method
@@ -242,6 +251,8 @@ class DSpaceSession(requests.Session):
         # projection name -> True (server knows it) / False (unknown, dropped)
         self.projection_support = {}
         self._projection_lock = threading.Lock()
+        # eperson UUID for X-On-Behalf-Of; a ContextVar keeps it local to the thread / task
+        self._on_behalf = ContextVar(f"dspace_on_behalf_{id(self)}", default=None)
 
     # ------------------------------------------------------------------
     # Scope for DSpaceAuth's own requests
@@ -277,6 +288,37 @@ class DSpaceSession(requests.Session):
         """
         return getattr(self._local, "depth", 0) > 0
 
+    # ------------------------------------------------------------------
+    # "Login as": X-On-Behalf-Of
+    # ------------------------------------------------------------------
+
+    @contextmanager
+    def on_behalf_of(self, eperson_uuid):
+        """
+        Send every request in the block with X-On-Behalf-Of: <eperson_uuid>
+        (blocks can be nested; None inside a block switches it off). Only
+        this thread / asyncio task is affected - worker threads started in
+        the block do not inherit it.
+        """
+        token = self._on_behalf.set(str(eperson_uuid) if eperson_uuid else None)
+        try:
+            yield self
+        finally:
+            self._on_behalf.reset(token)
+
+    @property
+    def acting_as(self):
+        """The eperson UUID requests are currently sent on behalf of, or None."""
+        return self._on_behalf.get()
+
+    def _with_on_behalf_header(self, kwargs):
+        uuid = self._on_behalf.get()
+        if not uuid:
+            return kwargs
+        headers = dict(kwargs.get("headers") or {})
+        headers[ON_BEHALF_OF_HEADER] = uuid
+        return {**kwargs, "headers": headers}
+
     def _settings(self):
         """Get the settings for the current session, falling back to default settings if necessary.
 
@@ -308,6 +350,7 @@ class DSpaceSession(requests.Session):
             return self._request_with_retries(method, url, args, kwargs)
 
         auth.ensure_fresh_token()
+        kwargs = self._with_on_behalf_header(kwargs)
         is_get = method.upper() == "GET"
         if is_get:
             url, kwargs = self._without_unsupported_projections(url, kwargs)
@@ -343,6 +386,8 @@ class DSpaceSession(requests.Session):
                 response.close()
                 response = self._send(auth, method, url, args, kwargs)
 
+        # lets handle_response_error() explain failures of the "login as" feature
+        response.dspace_on_behalf_of = (kwargs.get("headers") or {}).get(ON_BEHALF_OF_HEADER)
         return response
 
     # ------------------------------------------------------------------

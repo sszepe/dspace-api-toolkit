@@ -21,6 +21,8 @@ from .versions import VersionManager
 from .relationships import RelationshipManager
 from .workflow import WorkflowError, WorkflowManager
 from .workspaces import SubmissionError
+from .exceptions import OnBehalfOfError, UserAgreementRequired
+from . import on_behalf as _on_behalf
 
 
 class DSpaceClient:
@@ -62,6 +64,19 @@ class DSpaceClient:
         self.versions = VersionManager(self.auth)
         self.relationships = RelationshipManager(self.auth)
         self.workflow = WorkflowManager(self.auth)
+
+    def on_behalf_of(self, eperson, verify=True):
+        """
+        Context manager: requests in the block are made as `eperson` (UUID,
+        email or eperson dict) via X-On-Behalf-Of ("login as"). Needs an
+        administrator login and webui.user.assumelogin = true on the server;
+        verify=True checks that once and raises OnBehalfOfError with the
+        reason. See dspace_api/on_behalf.py.
+
+            with client.on_behalf_of("jane@example.org"):
+                client.items.get_item(uuid)
+        """
+        return _on_behalf.on_behalf_of(self.auth, eperson, verify=verify)
 
     def close(self):
         """Close the client and log out from the DSpace API.
